@@ -1,21 +1,22 @@
 {
-  "name": "old-physical-wolverine",
+  "name": "markdown-renderer",
   "version": "1.0.0",
-  "description": "A next project generated based on a UIDL document",
+  "description": "An efficient markdown renderer",
   "main": "index.js",
   "scripts": {
     "dev": "next",
     "build": "next build",
     "start": "next start",
-    "export": "next export"
+    "export": "next export",
+    "benchmark": "bun run benchmark/**/*.js",
+    "test:all": "bun test && bun run benchmark"
   },
-  "author": "TeleportHQ",
+  "author": "Pella",
   "license": "MIT",
   "dependencies": {
     "next": "^12.1.0",
     "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "@lottiefiles/lottie-player": "1.6.0"
+    "react-dom": "^17.0.2"
   },
   "devDependencies": {}
 }
