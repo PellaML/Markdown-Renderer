@@ -319,15 +319,90 @@ describe('Markdown Parser Tests', () => {
         });
     });
 
-    describe('Escaping (Literal Backslashes)', () => {
-        it('should treat backslashes as literal characters', () => {
+    describe('Escaping (Proper Escaping)', () => {
+        it('should properly escape formatting characters', () => {
             const ast = parseMarkdown('This is \\*not italic\\* and \\~\\~not strike\\~\\~');
-            assert.deepStrictEqual(ast.children[0].children, [T('This is \\*not italic\\* and \\~\\~not strike\\~\\~')]);
+            assert.deepStrictEqual(ast.children[0].children, [T('This is *not italic* and ~~not strike~~')]);
         });
 
-        it('should treat escaped link syntax as literal text', () => {
+        it('should properly escape link syntax characters', () => {
             const ast = parseMarkdown('\\[not a link\\](\\(not a url\\))');
-            assert.deepStrictEqual(ast.children[0].children, [T('\\[not a link\\](\\(not a url\\))')]);
+            assert.deepStrictEqual(ast.children[0].children, [T('[not a link]((not a url))')]);
+        });
+
+        it('should escape backslashes themselves', () => {
+            const ast = parseMarkdown('This is a literal backslash: \\\\');
+            assert.deepStrictEqual(ast.children[0].children, [T('This is a literal backslash: \\')]);
+        });
+
+        it('should escape backticks to prevent code formatting', () => {
+            const ast = parseMarkdown('Use \\`backticks\\` without code formatting');
+            assert.deepStrictEqual(ast.children[0].children, [T('Use `backticks` without code formatting')]);
+        });
+
+        it('should handle multiple consecutive escapes', () => {
+            const ast = parseMarkdown('\\*\\*not bold\\*\\* and \\`not code\\`');
+            assert.deepStrictEqual(ast.children[0].children, [T('**not bold** and `not code`')]);
+        });
+
+        it('should treat invalid escape sequences as literal text', () => {
+            const ast = parseMarkdown('Invalid escape: \\z and \\1 and \\space');
+            assert.deepStrictEqual(ast.children[0].children, [T('Invalid escape: \\z and \\1 and \\space')]);
+        });
+
+        it('should escape in headings', () => {
+            const ast = parseMarkdown('# Heading with \\*escaped\\* asterisks');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'heading',
+                level: 1,
+                children: [T('Heading with *escaped* asterisks')]
+            });
+        });
+
+        it('should escape in blockquotes', () => {
+            const ast = parseMarkdown('> Quote with \\*escaped\\* formatting');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'quote',
+                children: [T('Quote with *escaped* formatting')]
+            });
+        });
+
+        it('should escape in list items', () => {
+            const ast = parseMarkdown('- List item with \\*escaped\\* asterisks');
+            assert.deepStrictEqual(ast.children[0].children[0].children, [T('List item with *escaped* asterisks')]);
+        });
+
+        it('should escape hash symbols to prevent heading interpretation', () => {
+            const ast = parseMarkdown('\\# Not a heading');
+            assert.deepStrictEqual(ast.children[0].children, [T('# Not a heading')]);
+        });
+
+        it('should escape greater than to prevent blockquote interpretation', () => {
+            const ast = parseMarkdown('\\> Not a blockquote');
+            assert.deepStrictEqual(ast.children[0].children, [T('> Not a blockquote')]);
+        });
+
+        it('should escape hyphen to prevent list interpretation', () => {
+            const ast = parseMarkdown('\\- Not a list item');
+            assert.deepStrictEqual(ast.children[0].children, [T('- Not a list item')]);
+        });
+
+        it('should handle escape at end of text', () => {
+            const ast = parseMarkdown('Text ending with escape\\*');
+            assert.deepStrictEqual(ast.children[0].children, [T('Text ending with escape*')]);
+        });
+
+        it('should handle escape at end of input without following character', () => {
+            const ast = parseMarkdown('Text ending with backslash\\');
+            assert.deepStrictEqual(ast.children[0].children, [T('Text ending with backslash\\')]);
+        });
+
+        it('should escape all punctuation characters per CommonMark', () => {
+            const escapableChars = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+            const input = escapableChars.split('').map(char => `\\${char}`).join('');
+            const expected = escapableChars;
+            const ast = parseMarkdown(input);
+            assert.deepStrictEqual(ast.children[0].children, [T(expected)]);
         });
     });
 

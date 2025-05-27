@@ -314,3 +314,15 @@ benchmark/debug-parser-comparison.js
 
 # Development planning
 TODO.md
+
+# Project specific
+BENCHMARK_RESULTS.md
+benchmark/enhanced-performance-suite.js
+benchmark/performance-summary.js
+benchmark/advanced-performance-analysis.js
+# READMES
+benchmark/BENCHMARK_OPTIMIZATION_GUIDE.md
+benchmark/README.md
+
+# Analysis files
+LIBRARY_COMPARISON.md
