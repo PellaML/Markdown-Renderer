@@ -310,7 +310,11 @@ describe('Markdown Parser Tests', () => {
             const ast = parseMarkdown('Text with a [link](url).');
             assert.deepStrictEqual(ast.children[0], {
                 type: 'paragraph',
-                children: [T('Text with a [link](url).')]
+                children: [
+                    T('Text with a '),
+                    { type: 'link', url: 'url', children: [T('link')] },
+                    T('.')
+                ]
             });
         });
     });
@@ -365,6 +369,315 @@ describe('Markdown Parser Tests', () => {
             assert.strictEqual(ast.children[1].type, 'list');
             assert.strictEqual(ast.children[2].type, 'line-break');
             assert.strictEqual(ast.children[3].type, 'paragraph');
+        });
+    });
+
+    describe('Inline Code', () => {
+        it('should parse inline code with backticks', () => {
+            const ast = parseMarkdown('This is `inline code` in text.');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('This is '),
+                { type: 'code', value: 'inline code' },
+                T(' in text.')
+            ]);
+        });
+
+        it('should parse multiple inline code spans', () => {
+            const ast = parseMarkdown('Use `console.log()` and `alert()` functions.');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('Use '),
+                { type: 'code', value: 'console.log()' },
+                T(' and '),
+                { type: 'code', value: 'alert()' },
+                T(' functions.')
+            ]);
+        });
+
+        it('should handle inline code at start and end of line', () => {
+            const ast = parseMarkdown('`start` middle `end`');
+            assert.deepStrictEqual(ast.children[0].children, [
+                { type: 'code', value: 'start' },
+                T(' middle '),
+                { type: 'code', value: 'end' }
+            ]);
+        });
+
+        it('should preserve spaces and special chars in inline code', () => {
+            const ast = parseMarkdown('Code: `  special **chars** & symbols  `');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('Code: '),
+                { type: 'code', value: '  special **chars** & symbols  ' }
+            ]);
+        });
+
+        it('should treat unmatched backticks as literal text', () => {
+            const ast = parseMarkdown('This `is incomplete');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('This `is incomplete')
+            ]);
+        });
+
+        it('should handle empty inline code', () => {
+            const ast = parseMarkdown('Empty: `` and text');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('Empty: '),
+                { type: 'code', value: '' },
+                T(' and text')
+            ]);
+        });
+
+        it('should handle inline code with backticks inside (using multiple backticks)', () => {
+            const ast = parseMarkdown('Code: `` `backtick` inside ``');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('Code: '),
+                { type: 'code', value: '`backtick` inside' }
+            ]);
+        });
+    });
+
+    describe('Fenced Code Blocks', () => {
+        it('should parse basic fenced code block with backticks', () => {
+            const markdown = '```\nfunction hello() {\n  console.log("world");\n}\n```';
+            const ast = parseMarkdown(markdown);
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'code-block',
+                language: null,
+                value: 'function hello() {\n  console.log("world");\n}'
+            });
+        });
+
+        it('should parse fenced code block with language', () => {
+            const markdown = '```javascript\nfunction hello() {\n  console.log("world");\n}\n```';
+            const ast = parseMarkdown(markdown);
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'code-block',
+                language: 'javascript',
+                value: 'function hello() {\n  console.log("world");\n}'
+            });
+        });
+
+        it('should parse fenced code block with tildes', () => {
+            const markdown = '~~~python\ndef hello():\n    print("world")\n~~~';
+            const ast = parseMarkdown(markdown);
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'code-block',
+                language: 'python',
+                value: 'def hello():\n    print("world")'
+            });
+        });
+
+        it('should handle empty code block', () => {
+            const markdown = '```\n```';
+            const ast = parseMarkdown(markdown);
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'code-block',
+                language: null,
+                value: ''
+            });
+        });
+
+        it('should preserve leading whitespace in code blocks', () => {
+            const markdown = '```\n    indented code\n        more indented\n```';
+            const ast = parseMarkdown(markdown);
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'code-block',
+                language: null,
+                value: '    indented code\n        more indented'
+            });
+        });
+
+        it('should handle unclosed code block as paragraph', () => {
+            const markdown = '```javascript\nfunction hello() {';
+            const ast = parseMarkdown(markdown);
+            assert.deepStrictEqual(ast.children[0].type, 'paragraph');
+        });
+
+        it('should handle code block with content after language', () => {
+            const markdown = '```js title="example.js"\nconst x = 1;\n```';
+            const ast = parseMarkdown(markdown);
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'code-block',
+                language: 'js',
+                meta: 'title="example.js"',
+                value: 'const x = 1;'
+            });
+        });
+    });
+
+    describe('Images', () => {
+        it('should parse basic image', () => {
+            const ast = parseMarkdown('![Alt text](image.jpg)');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'image',
+                alt: 'Alt text',
+                src: 'image.jpg',
+                title: null
+            });
+        });
+
+        it('should parse image with title', () => {
+            const ast = parseMarkdown('![Alt text](image.jpg "Image title")');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'image',
+                alt: 'Alt text',
+                src: 'image.jpg',
+                title: 'Image title'
+            });
+        });
+
+        it('should parse image with empty alt text', () => {
+            const ast = parseMarkdown('![](image.jpg)');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'image',
+                alt: '',
+                src: 'image.jpg',
+                title: null
+            });
+        });
+
+        it('should parse inline image in paragraph', () => {
+            const ast = parseMarkdown('Before ![alt](img.jpg) after.');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('Before '),
+                { type: 'image', alt: 'alt', src: 'img.jpg', title: null },
+                T(' after.')
+            ]);
+        });
+
+        it('should treat malformed image syntax as text', () => {
+            const ast = parseMarkdown('![Alt text(missing closing bracket');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('![Alt text(missing closing bracket')
+            ]);
+        });
+
+        it('should parse image with complex URL', () => {
+            const ast = parseMarkdown('![Test](https://example.com/path/image.png?query=1)');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'image',
+                alt: 'Test',
+                src: 'https://example.com/path/image.png?query=1',
+                title: null
+            });
+        });
+    });
+
+    describe('Horizontal Rules', () => {
+        it('should parse dashes horizontal rule', () => {
+            const ast = parseMarkdown('---');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'horizontal-rule'
+            });
+        });
+
+        it('should parse asterisks horizontal rule', () => {
+            const ast = parseMarkdown('***');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'horizontal-rule'
+            });
+        });
+
+        it('should parse underscores horizontal rule', () => {
+            const ast = parseMarkdown('___');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'horizontal-rule'
+            });
+        });
+
+        it('should parse horizontal rule with spaces', () => {
+            const ast = parseMarkdown('- - -');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'horizontal-rule'
+            });
+        });
+
+        it('should parse horizontal rule with many characters', () => {
+            const ast = parseMarkdown('----------');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'horizontal-rule'
+            });
+        });
+
+        it('should parse horizontal rule between content', () => {
+            const ast = parseMarkdown('Content above\n\n---\n\nContent below');
+            assert.strictEqual(ast.children.length, 5);
+            assert.strictEqual(ast.children[0].type, 'paragraph');
+            assert.strictEqual(ast.children[2].type, 'horizontal-rule');
+            assert.strictEqual(ast.children[4].type, 'paragraph');
+        });
+
+        it('should not parse insufficient characters as horizontal rule', () => {
+            const ast = parseMarkdown('--');
+            assert.deepStrictEqual(ast.children[0].type, 'paragraph');
+        });
+    });
+
+    describe('Inline Links', () => {
+        it('should parse inline link in paragraph', () => {
+            const ast = parseMarkdown('Check out [this link](http://example.com) in text.');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('Check out '),
+                { type: 'link', url: 'http://example.com', children: [T('this link')] },
+                T(' in text.')
+            ]);
+        });
+
+        it('should parse multiple inline links', () => {
+            const ast = parseMarkdown('Visit [site1](http://1.com) and [site2](http://2.com).');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('Visit '),
+                { type: 'link', url: 'http://1.com', children: [T('site1')] },
+                T(' and '),
+                { type: 'link', url: 'http://2.com', children: [T('site2')] },
+                T('.')
+            ]);
+        });
+
+        it('should parse link with title', () => {
+            const ast = parseMarkdown('A [link](http://example.com "Link title") with title.');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('A '),
+                { type: 'link', url: 'http://example.com', title: 'Link title', children: [T('link')] },
+                T(' with title.')
+            ]);
+        });
+
+        it('should parse link with formatting in link text', () => {
+            const ast = parseMarkdown('A [**bold** link](http://example.com) here.');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('A '),
+                { 
+                    type: 'link', 
+                    url: 'http://example.com', 
+                    children: [{ type: 'strong', children: [T('bold')] }, T(' link')]
+                },
+                T(' here.')
+            ]);
+        });
+
+        it('should handle link at start and end of paragraph', () => {
+            const ast = parseMarkdown('[Start](http://start.com) middle [end](http://end.com)');
+            assert.deepStrictEqual(ast.children[0].children, [
+                { type: 'link', url: 'http://start.com', children: [T('Start')] },
+                T(' middle '),
+                { type: 'link', url: 'http://end.com', children: [T('end')] }
+            ]);
+        });
+
+        it('should treat malformed links as literal text', () => {
+            const ast = parseMarkdown('This [incomplete link(missing bracket');
+            assert.deepStrictEqual(ast.children[0].children, [
+                T('This [incomplete link(missing bracket')
+            ]);
+        });
+
+        it('should preserve existing block-level link behavior', () => {
+            const ast = parseMarkdown('[Block Link](http://example.com)');
+            assert.deepStrictEqual(ast.children[0], {
+                type: 'link',
+                url: 'http://example.com',
+                children: [T('Block Link')]
+            });
         });
     });
 });

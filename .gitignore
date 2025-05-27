@@ -307,3 +307,10 @@ $RECYCLE.BIN/
 **/xcshareddata/WorkspaceSettings.xcsettings
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,swift,xcode,cocoapods,swiftpackagemanager,visualstudiocode,windows,node,react
+
+# Debug and comparison files
+benchmark/debug-marked-comparison.js
+benchmark/debug-parser-comparison.js
+
+# Development planning
+TODO.md
